@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skyborne Chapters</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas id="paint-canvas" aria-hidden="true"></canvas>
+
+    <header class="site-header" aria-label="Site navigation">
+      <a class="brand" href="#scene-01" aria-label="Skyborne Chapters home">
+        <span class="brand-mark"></span>
+        Skyborne Chapters
+      </a>
+      <nav class="chapter-nav" aria-label="Chapters">
+        <a href="#scene-01" class="is-active">01</a>
+        <a href="#scene-02">02</a>
+        <a href="#scene-03">03</a>
+        <a href="#scene-04">04</a>
+        <a href="#scene-05">05</a>
+      </nav>
+    </header>
+
+    <div class="scroll-meter" aria-hidden="true"><span></span></div>
+
+    <main>
+      <section
+        id="scene-01"
+        class="story-scene"
+        data-ink="#10233f"
+        data-top="#79b8ef"
+        data-mid="#ffd2a6"
+        data-low="#fff5d6"
+        data-accent="#ff7f6e"
+        data-stars="0.02"
+      >
+        <p class="eyebrow">Chapter 01</p>
+        <div class="scene-copy">
+          <h1>空が章をめくる。</h1>
+          <p>
+            夜明けの端で、光がまだ名前を持たない色にほどける。指先の動きに沿って雲がにじみ、最初の場面が静かに開く。
+          </p>
+        </div>
+        <div class="scene-index">01</div>
+      </section>
+
+      <section
+        id="scene-02"
+        class="story-scene align-right"
+        data-ink="#0c315e"
+        data-top="#4aa4f0"
+        data-mid="#a8dcff"
+        data-low="#fff0bf"
+        data-accent="#f4c94f"
+        data-stars="0"
+      >
+        <p class="eyebrow">Chapter 02</p>
+        <div class="scene-copy">
+          <h2>青は深く息をする。</h2>
+          <p>
+            スクロールが進むたび、空の温度はなめらかに変わる。雲の筆致は遠くへ流れ、言葉は光の中へ浮かび上がる。
+          </p>
+        </div>
+        <div class="scene-index">02</div>
+      </section>
+
+      <section
+        id="scene-03"
+        class="story-scene"
+        data-ink="#17304f"
+        data-top="#2f6fb4"
+        data-mid="#ffc48e"
+        data-low="#ffe7bc"
+        data-accent="#ff6f61"
+        data-stars="0.04"
+      >
+        <p class="eyebrow">Chapter 03</p>
+        <div class="scene-copy">
+          <h2>風景は金色に傾く。</h2>
+          <p>
+            夕暮れは一枚の絵のように層を重ねる。近づくカーソルが乾かない絵具を押し広げ、景色の輪郭を柔らかくする。
+          </p>
+        </div>
+        <div class="scene-index">03</div>
+      </section>
+
+      <section
+        id="scene-04"
+        class="story-scene align-right is-dark"
+        data-ink="#f7fbff"
+        data-top="#24396f"
+        data-mid="#b56ba1"
+        data-low="#f5b06f"
+        data-accent="#ffd37a"
+        data-stars="0.24"
+      >
+        <p class="eyebrow">Chapter 04</p>
+        <div class="scene-copy">
+          <h2>薄明が奥行きを作る。</h2>
+          <p>
+            空は手前と奥へ分かれ、影はゆっくりと場面を包む。色の境目が消え、次の章だけが遠くで光る。
+          </p>
+        </div>
+        <div class="scene-index">04</div>
+      </section>
+
+      <section
+        id="scene-05"
+        class="story-scene final-scene is-dark"
+        data-ink="#f8fbff"
+        data-top="#07101f"
+        data-mid="#182b50"
+        data-low="#60446a"
+        data-accent="#aee7ff"
+        data-stars="0.92"
+      >
+        <p class="eyebrow">Chapter 05</p>
+        <div class="scene-copy">
+          <h2>夜は余韻として残る。</h2>
+          <p>
+            最後のシーンは暗転しない。星の粒と筆跡が重なり、スクロールの軌跡は静かな空の記憶になる。
+          </p>
+        </div>
+        <div class="scene-index">05</div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
