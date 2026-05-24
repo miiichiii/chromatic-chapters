@@ -129,8 +129,8 @@ const material = new THREE.ShaderMaterial({
       vec2 ratio = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
       vec2 cursor = (uv - uMouse) * ratio;
       float cursorDistance = length(cursor);
-      float cursorBloom = 1.0 - smoothstep(0.0, 0.58, cursorDistance);
-      float wake = cursorBloom * (0.32 + min(uVelocity, 1.0) * 0.62);
+      float cursorBloom = 1.0 - smoothstep(0.0, 0.68, cursorDistance);
+      float wake = cursorBloom * (0.42 + min(uVelocity, 1.0) * 0.78);
 
       float horizon = smoothstep(0.08, 0.84, uv.y);
       vec3 lowerSky = mix(uLow, uMid, smoothstep(0.0, 0.58, uv.y));
@@ -139,12 +139,12 @@ const material = new THREE.ShaderMaterial({
       vec2 flow = uv * vec2(2.0, 1.22);
       flow.x += sin(uv.y * 8.0 + uTime * 0.08 + uScroll * 2.2) * 0.08;
       flow.y += cos(uv.x * 7.0 - uTime * 0.07) * 0.06;
-      flow += normalize(cursor + 0.001) * wake * 0.24;
+      flow += normalize(cursor + 0.001) * wake * 0.34;
 
       float cloudBase = fbm(flow * 2.55 + vec2(uTime * 0.018, -uScroll * 0.42));
       float cloudDetail = fbm(flow * 9.5 - vec2(uTime * 0.025, uScroll * 0.2));
       float cloudBand = smoothstep(0.04, 0.42, uv.y) * (1.0 - smoothstep(0.45, 1.05, uv.y));
-      float cloud = smoothstep(0.46, 0.86, cloudBase + cloudDetail * 0.22 + wake * 0.38) * cloudBand;
+      float cloud = smoothstep(0.46, 0.86, cloudBase + cloudDetail * 0.22 + wake * 0.54) * cloudBand;
 
       float brush = smoothstep(0.42, 0.88, fbm(flow * 13.0 + wake * 1.8));
       float dryEdge = smoothstep(0.64, 0.96, cloudBase + brush * 0.28);
@@ -155,9 +155,9 @@ const material = new THREE.ShaderMaterial({
       float glow = 1.0 - smoothstep(0.0, 0.82, distance((uv - glowPoint) * ratio, vec2(0.0)));
       sky = softLight(sky, uAccent, glow * 0.32);
 
-      float paintWake = (1.0 - smoothstep(0.0, 0.62, cursorDistance)) * (0.18 + uVelocity * 0.25);
+      float paintWake = (1.0 - smoothstep(0.0, 0.72, cursorDistance)) * (0.24 + uVelocity * 0.42);
       vec3 paintTint = mix(uAccent, uInk, cloudBase * 0.34);
-      sky = mix(sky, paintTint, paintWake * (0.34 + brush * 0.24));
+      sky = mix(sky, paintTint, paintWake * (0.46 + brush * 0.34));
 
       vec2 starGrid = floor(uv * uResolution.xy * 0.42);
       float starSeed = hash(starGrid);
@@ -201,7 +201,7 @@ window.addEventListener("pointermove", (event) => {
 });
 
 const lenis = new Lenis({
-  duration: 1.35,
+  duration: 0.96,
   easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
   smoothWheel: !reducedMotion,
   syncTouch: true,
@@ -253,6 +253,12 @@ const paintTo = (sceneElement, duration = 1.1) => {
   });
 };
 
+const activateScene = (sceneElement) => {
+  setScenePalette(sceneElement);
+  paintTo(sceneElement);
+  setActiveNav(sceneElement);
+};
+
 scenes.forEach((sceneElement, index) => {
   const copy = sceneElement.querySelector(".scene-copy");
   const heading = copy.querySelector("h1, h2");
@@ -292,21 +298,15 @@ scenes.forEach((sceneElement, index) => {
   const timeline = gsap.timeline({
     scrollTrigger: {
       trigger: sceneElement,
-      start: "top top",
-      end: reducedMotion ? "bottom top" : "+=115%",
-      scrub: reducedMotion ? false : 1.18,
-      pin: !reducedMotion,
-      anticipatePin: 1,
+      start: "top 86%",
+      end: "bottom 14%",
+      scrub: reducedMotion ? false : true,
       invalidateOnRefresh: true,
       onEnter: () => {
-        setScenePalette(sceneElement);
-        paintTo(sceneElement);
-        setActiveNav(sceneElement);
+        activateScene(sceneElement);
       },
       onEnterBack: () => {
-        setScenePalette(sceneElement);
-        paintTo(sceneElement);
-        setActiveNav(sceneElement);
+        activateScene(sceneElement);
       },
     },
   });
@@ -335,7 +335,7 @@ scenes.forEach((sceneElement, index) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    lenis.scrollTo(link.hash, { duration: 1.35, offset: 0 });
+    lenis.scrollTo(link.hash, { duration: 0.9, offset: 0 });
   });
 });
 
