@@ -15,6 +15,10 @@ const root = document.documentElement;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 root.dataset.skyborne = "ready";
 
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const hexToRgb = (hex) => {
   const value = hex.replace("#", "");
   const bigint = Number.parseInt(value, 16);
@@ -244,25 +248,68 @@ let touchStartY = 0;
 let touchLastX = 0;
 let touchLastY = 0;
 let touchVerticalIntent = false;
+let settledSceneIndex = Math.max(
+  0,
+  scenes.findIndex((sceneElement) => `#${sceneElement.id}` === window.location.hash),
+);
+let anchorTimer = 0;
+let driftAnchorTimer = 0;
+let viewportAnchorTimer = 0;
 
-const getNearestSceneIndex = () => {
-  let nearestIndex = 0;
-  let nearestDistance = Number.POSITIVE_INFINITY;
+const clampSceneIndex = (index) => Math.max(0, Math.min(scenes.length - 1, index));
+const getSceneTop = (index) => Math.round(scenes[clampSceneIndex(index)]?.offsetTop ?? 0);
 
-  scenes.forEach((sceneElement, index) => {
-    const distance = Math.abs(sceneElement.getBoundingClientRect().top);
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestIndex = index;
-    }
-  });
-
-  return nearestIndex;
+const updateScrollVisuals = () => {
+  const maxScroll = Math.max(root.scrollHeight - window.innerHeight, 1);
+  const progress = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
+  uniforms.uScroll.value = progress;
+  gsap.set(scrollMeter, { scaleX: progress });
 };
 
-const releaseSceneSnap = (delay = SCENE_SNAP_RELEASE_MS) => {
+const anchorToScene = (targetIndex = settledSceneIndex) => {
+  const clampedIndex = clampSceneIndex(targetIndex);
+  const targetScene = scenes[clampedIndex];
+  const targetTop = getSceneTop(clampedIndex);
+
+  if (!targetScene) return;
+
+  activateScene(targetScene);
+
+  if (Math.abs(window.scrollY - targetTop) > 1) {
+    lenis.scrollTo(targetTop, {
+      immediate: true,
+      force: true,
+      lock: true,
+    });
+    window.scrollTo({
+      top: targetTop,
+      left: 0,
+      behavior: "auto",
+    });
+  }
+
+  updateScrollVisuals();
+  ScrollTrigger.update();
+};
+
+const scheduleAnchor = (targetIndex = settledSceneIndex, delay = SCENE_SNAP_RELEASE_MS) => {
+  window.clearTimeout(anchorTimer);
+  anchorTimer = window.setTimeout(() => anchorToScene(targetIndex), delay);
+};
+
+const scheduleDriftAnchor = (delay = 70) => {
+  window.clearTimeout(driftAnchorTimer);
+  driftAnchorTimer = window.setTimeout(() => {
+    if (!isSceneSnapping && (wheelGestureLocked || touchGestureLocked || performance.now() < inputCooldownUntil)) {
+      anchorToScene(settledSceneIndex);
+    }
+  }, delay);
+};
+
+const releaseSceneSnap = (targetIndex = settledSceneIndex, delay = SCENE_SNAP_RELEASE_MS) => {
   window.clearTimeout(snapTimer);
   snapTimer = window.setTimeout(() => {
+    anchorToScene(targetIndex);
     isSceneSnapping = false;
   }, delay);
 };
@@ -279,31 +326,38 @@ const releaseTouchGesture = (delay = SCENE_INPUT_COOLDOWN_MS) => {
 };
 
 const snapToScene = (targetIndex, duration = SCENE_SNAP_DURATION) => {
-  const targetScene = scenes[targetIndex];
+  const clampedIndex = clampSceneIndex(targetIndex);
+  const targetScene = scenes[clampedIndex];
+  const targetTop = getSceneTop(clampedIndex);
 
+  if (!targetScene) return false;
+
+  settledSceneIndex = clampedIndex;
   isSceneSnapping = true;
   wheelGestureLocked = true;
   touchGestureLocked = true;
   lockInputAfterSnap();
   activateScene(targetScene);
-  lenis.scrollTo(targetScene, {
+  lenis.scrollTo(targetTop, {
     duration,
-    offset: 0,
+    force: true,
     lock: true,
+    onComplete: () => anchorToScene(clampedIndex),
   });
-  releaseSceneSnap();
+  releaseSceneSnap(clampedIndex);
   releaseTouchGesture();
+  scheduleAnchor(clampedIndex);
+  return true;
 };
 
 const snapByDirection = (direction) => {
   if (reducedMotion || isSceneSnapping || direction === 0 || performance.now() < inputCooldownUntil) return false;
 
-  const currentIndex = getNearestSceneIndex();
+  const currentIndex = settledSceneIndex;
   const targetIndex = Math.max(0, Math.min(scenes.length - 1, currentIndex + direction));
 
   if (targetIndex === currentIndex) return false;
-  snapToScene(targetIndex);
-  return true;
+  return snapToScene(targetIndex);
 };
 
 lenis.on("scroll", ({ progress, velocity }) => {
@@ -312,6 +366,17 @@ lenis.on("scroll", ({ progress, velocity }) => {
   uniforms.uVelocity.value = Math.min(Math.abs(velocity) / 34, 1.8);
   gsap.to(scrollMeter, { scaleX: progress, duration: 0.18, overwrite: true });
 });
+
+window.addEventListener(
+  "scroll",
+  () => {
+    if (isSceneSnapping) return;
+    if (wheelGestureLocked || touchGestureLocked || performance.now() < inputCooldownUntil) {
+      scheduleDriftAnchor();
+    }
+  },
+  { passive: true },
+);
 
 window.addEventListener(
   "wheel",
@@ -323,7 +388,9 @@ window.addEventListener(
 
     if (!wheelGestureLocked && performance.now() >= inputCooldownUntil) {
       wheelGestureLocked = true;
-      snapByDirection(Math.sign(event.deltaY));
+      if (!snapByDirection(Math.sign(event.deltaY))) {
+        anchorToScene(settledSceneIndex);
+      }
     }
 
     wheelGestureTimer = window.setTimeout(() => {
@@ -369,7 +436,7 @@ window.addEventListener(
     touchVerticalIntent =
       touchVerticalIntent || (absoluteY > 8 && absoluteY > absoluteX * SWIPE_AXIS_RATIO);
 
-    if (touchVerticalIntent) {
+    if (touchGestureLocked || isSceneSnapping || performance.now() < inputCooldownUntil || touchVerticalIntent) {
       event.preventDefault();
     }
   },
@@ -390,11 +457,18 @@ window.addEventListener(
 
     if (isVerticalSwipe) {
       event.preventDefault();
-      if (touchGestureLocked) return;
+      if (touchGestureLocked) {
+        if (!isSceneSnapping) anchorToScene(settledSceneIndex);
+        return;
+      }
       touchGestureLocked = true;
       if (!snapByDirection(Math.sign(deltaY))) {
+        anchorToScene(settledSceneIndex);
         releaseTouchGesture(90);
       }
+    } else if (touchVerticalIntent || absoluteY > 3) {
+      anchorToScene(settledSceneIndex);
+      releaseTouchGesture(90);
     } else {
       releaseTouchGesture(90);
     }
@@ -403,6 +477,23 @@ window.addEventListener(
 );
 
 window.addEventListener("touchcancel", () => releaseTouchGesture(90), { passive: true, capture: true });
+
+const handleViewportAnchor = () => {
+  window.clearTimeout(viewportAnchorTimer);
+  viewportAnchorTimer = window.setTimeout(() => {
+    lenis.resize?.();
+    ScrollTrigger.refresh();
+    if (isSceneSnapping) {
+      scheduleAnchor(settledSceneIndex);
+    } else {
+      anchorToScene(settledSceneIndex);
+    }
+  }, 180);
+};
+
+window.addEventListener("orientationchange", handleViewportAnchor);
+window.addEventListener("resize", handleViewportAnchor);
+window.visualViewport?.addEventListener("resize", handleViewportAnchor);
 
 gsap.ticker.add((time) => {
   lenis.raf(time * 1000);
@@ -546,4 +637,5 @@ const render = (time) => {
 
 requestAnimationFrame(render);
 ScrollTrigger.refresh();
+anchorToScene(settledSceneIndex);
 })();
