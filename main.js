@@ -223,11 +223,61 @@ const lenis = new Lenis({
   touchMultiplier: 1,
 });
 
+let snapTimer = 0;
+let isSceneSnapping = false;
+
+const getNearestSceneIndex = () => {
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  scenes.forEach((sceneElement, index) => {
+    const distance = Math.abs(sceneElement.getBoundingClientRect().top);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+
+  return nearestIndex;
+};
+
+const releaseSceneSnap = () => {
+  window.clearTimeout(snapTimer);
+  snapTimer = window.setTimeout(() => {
+    isSceneSnapping = false;
+  }, 560);
+};
+
+const snapToNearestScene = () => {
+  if (reducedMotion || isSceneSnapping) return;
+
+  const targetIndex = getNearestSceneIndex();
+  const targetScene = scenes[targetIndex];
+  const distance = Math.abs(targetScene.getBoundingClientRect().top);
+
+  if (distance < 3) return;
+
+  isSceneSnapping = true;
+  lenis.scrollTo(targetScene, {
+    duration: 0.42,
+    offset: 0,
+  });
+  releaseSceneSnap();
+};
+
+const queueSceneSnap = (velocity = 0) => {
+  if (reducedMotion || isSceneSnapping) return;
+
+  window.clearTimeout(snapTimer);
+  snapTimer = window.setTimeout(snapToNearestScene, Math.abs(velocity) > 10 ? 170 : 115);
+};
+
 lenis.on("scroll", ({ progress, velocity }) => {
   ScrollTrigger.update();
   uniforms.uScroll.value = progress;
   uniforms.uVelocity.value = Math.min(Math.abs(velocity) / 34, 1.8);
   gsap.to(scrollMeter, { scaleX: progress, duration: 0.18, overwrite: true });
+  queueSceneSnap(velocity);
 });
 
 gsap.ticker.add((time) => {
@@ -350,7 +400,9 @@ scenes.forEach((sceneElement, index) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    lenis.scrollTo(link.hash, { duration: 0.5, offset: 0 });
+    isSceneSnapping = true;
+    lenis.scrollTo(link.hash, { duration: 0.42, offset: 0 });
+    releaseSceneSnap();
   });
 });
 

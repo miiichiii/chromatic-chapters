@@ -20,6 +20,7 @@
 html {
   background: var(--sky-low);
   scroll-behavior: auto;
+  scroll-snap-type: y mandatory;
 }
 
 body {
@@ -178,11 +179,14 @@ main {
   position: relative;
   display: grid;
   --parallax: 0px;
+  height: 100svh;
   min-height: 100svh;
-  padding: calc(var(--header-height) + 46px) clamp(20px, 7vw, 112px) 11svh;
-  align-content: center;
+  padding: calc(var(--header-height) + 64px) clamp(20px, 7vw, 112px) 0;
+  align-content: start;
   overflow: clip;
   isolation: isolate;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .story-scene::before {
@@ -303,7 +307,7 @@ main {
 }
 
 .final-scene {
-  min-height: 104svh;
+  min-height: 100svh;
 }
 
 ::selection {
@@ -340,7 +344,7 @@ main {
   }
 
   .story-scene {
-    padding: calc(var(--header-height) + 36px) 18px 10svh;
+    padding: calc(var(--header-height) + 48px) 18px 0;
   }
 
   .story-scene::before {
