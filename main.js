@@ -210,16 +210,18 @@ let lastMouseX = 0.5;
 let lastMouseY = 0.5;
 let pointerVelocity = 0;
 
-window.addEventListener("pointermove", (event) => {
-  targetMouseX = event.clientX / window.innerWidth;
-  targetMouseY = 1 - event.clientY / window.innerHeight;
-});
+const setPointerTarget = (clientX, clientY) => {
+  targetMouseX = clientX / Math.max(window.innerWidth, 1);
+  targetMouseY = 1 - clientY / Math.max(window.innerHeight, 1);
+};
+
+window.addEventListener("pointermove", (event) => setPointerTarget(event.clientX, event.clientY));
 
 const lenis = new Lenis({
   duration: 0.48,
   easing: (t) => 1 - Math.pow(1 - t, 3),
   smoothWheel: !reducedMotion,
-  syncTouch: true,
+  syncTouch: false,
   touchMultiplier: 1,
 });
 
@@ -227,6 +229,8 @@ const SCENE_SNAP_DURATION = 0.36;
 const SCENE_SNAP_RELEASE_MS = SCENE_SNAP_DURATION * 1000 + 140;
 const SCENE_INPUT_COOLDOWN_MS = 760;
 const WHEEL_GESTURE_RELEASE_MS = 1120;
+const SWIPE_TRIGGER_DISTANCE = 46;
+const SWIPE_AXIS_RATIO = 1.15;
 
 let snapTimer = 0;
 let isSceneSnapping = false;
@@ -234,7 +238,12 @@ let wheelGestureLocked = false;
 let wheelGestureTimer = 0;
 let inputCooldownUntil = 0;
 let touchGestureLocked = false;
+let touchReleaseTimer = 0;
+let touchStartX = 0;
 let touchStartY = 0;
+let touchLastX = 0;
+let touchLastY = 0;
+let touchVerticalIntent = false;
 
 const getNearestSceneIndex = () => {
   let nearestIndex = 0;
@@ -262,6 +271,13 @@ const lockInputAfterSnap = () => {
   inputCooldownUntil = performance.now() + SCENE_INPUT_COOLDOWN_MS;
 };
 
+const releaseTouchGesture = (delay = SCENE_INPUT_COOLDOWN_MS) => {
+  window.clearTimeout(touchReleaseTimer);
+  touchReleaseTimer = window.setTimeout(() => {
+    touchGestureLocked = false;
+  }, delay);
+};
+
 const snapToScene = (targetIndex, duration = SCENE_SNAP_DURATION) => {
   const targetScene = scenes[targetIndex];
 
@@ -276,16 +292,18 @@ const snapToScene = (targetIndex, duration = SCENE_SNAP_DURATION) => {
     lock: true,
   });
   releaseSceneSnap();
+  releaseTouchGesture();
 };
 
 const snapByDirection = (direction) => {
-  if (reducedMotion || isSceneSnapping || direction === 0 || performance.now() < inputCooldownUntil) return;
+  if (reducedMotion || isSceneSnapping || direction === 0 || performance.now() < inputCooldownUntil) return false;
 
   const currentIndex = getNearestSceneIndex();
   const targetIndex = Math.max(0, Math.min(scenes.length - 1, currentIndex + direction));
 
-  if (targetIndex === currentIndex) return;
+  if (targetIndex === currentIndex) return false;
   snapToScene(targetIndex);
+  return true;
 };
 
 lenis.on("scroll", ({ progress, velocity }) => {
@@ -318,41 +336,73 @@ window.addEventListener(
 window.addEventListener(
   "touchstart",
   (event) => {
-    touchStartY = event.touches[0]?.clientY ?? 0;
-    touchGestureLocked = false;
+    const touch = event.touches[0];
+    touchStartX = touch?.clientX ?? 0;
+    touchStartY = touch?.clientY ?? 0;
+    touchLastX = touchStartX;
+    touchLastY = touchStartY;
+    touchVerticalIntent = false;
+
+    if (touch) setPointerTarget(touch.clientX, touch.clientY);
+
+    if (!isSceneSnapping && performance.now() >= inputCooldownUntil) {
+      touchGestureLocked = false;
+    }
   },
-  { passive: true },
+  { passive: true, capture: true },
 );
 
 window.addEventListener(
   "touchmove",
   (event) => {
-    const currentY = event.touches[0]?.clientY ?? touchStartY;
+    const touch = event.touches[0];
+    const currentX = touch?.clientX ?? touchLastX;
+    const currentY = touch?.clientY ?? touchLastY;
+    const deltaX = currentX - touchStartX;
     const deltaY = touchStartY - currentY;
+    const absoluteX = Math.abs(deltaX);
+    const absoluteY = Math.abs(deltaY);
 
-    if (touchGestureLocked || isSceneSnapping || performance.now() < inputCooldownUntil) {
-      event.preventDefault();
-      return;
-    }
+    touchLastX = currentX;
+    touchLastY = currentY;
+    setPointerTarget(currentX, currentY);
+    touchVerticalIntent =
+      touchVerticalIntent || (absoluteY > 8 && absoluteY > absoluteX * SWIPE_AXIS_RATIO);
 
-    if (Math.abs(deltaY) > 28) {
+    if (touchVerticalIntent) {
       event.preventDefault();
-      touchGestureLocked = true;
-      snapByDirection(Math.sign(deltaY));
     }
   },
-  { passive: false },
+  { passive: false, capture: true },
 );
 
 window.addEventListener(
   "touchend",
-  () => {
-    window.setTimeout(() => {
-      touchGestureLocked = false;
-    }, SCENE_INPUT_COOLDOWN_MS);
+  (event) => {
+    const touch = event.changedTouches[0];
+    const endX = touch?.clientX ?? touchLastX;
+    const endY = touch?.clientY ?? touchLastY;
+    const deltaX = endX - touchStartX;
+    const deltaY = touchStartY - endY;
+    const absoluteX = Math.abs(deltaX);
+    const absoluteY = Math.abs(deltaY);
+    const isVerticalSwipe = absoluteY > SWIPE_TRIGGER_DISTANCE && absoluteY > absoluteX * SWIPE_AXIS_RATIO;
+
+    if (isVerticalSwipe) {
+      event.preventDefault();
+      if (touchGestureLocked) return;
+      touchGestureLocked = true;
+      if (!snapByDirection(Math.sign(deltaY))) {
+        releaseTouchGesture(90);
+      }
+    } else {
+      releaseTouchGesture(90);
+    }
   },
-  { passive: true },
+  { passive: false, capture: true },
 );
+
+window.addEventListener("touchcancel", () => releaseTouchGesture(90), { passive: true, capture: true });
 
 gsap.ticker.add((time) => {
   lenis.raf(time * 1000);
