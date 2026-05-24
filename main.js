@@ -223,6 +223,11 @@ const lenis = new Lenis({
   touchMultiplier: 1,
 });
 
+const SCENE_SNAP_DURATION = 0.36;
+const SCENE_SNAP_RELEASE_MS = SCENE_SNAP_DURATION * 1000 + 140;
+const SCENE_INPUT_COOLDOWN_MS = 760;
+const WHEEL_GESTURE_RELEASE_MS = 1120;
+
 let snapTimer = 0;
 let isSceneSnapping = false;
 let wheelGestureLocked = false;
@@ -246,7 +251,7 @@ const getNearestSceneIndex = () => {
   return nearestIndex;
 };
 
-const releaseSceneSnap = (delay = 280) => {
+const releaseSceneSnap = (delay = SCENE_SNAP_RELEASE_MS) => {
   window.clearTimeout(snapTimer);
   snapTimer = window.setTimeout(() => {
     isSceneSnapping = false;
@@ -254,10 +259,10 @@ const releaseSceneSnap = (delay = 280) => {
 };
 
 const lockInputAfterSnap = () => {
-  inputCooldownUntil = performance.now() + 700;
+  inputCooldownUntil = performance.now() + SCENE_INPUT_COOLDOWN_MS;
 };
 
-const snapToScene = (targetIndex, duration = 0.22) => {
+const snapToScene = (targetIndex, duration = SCENE_SNAP_DURATION) => {
   const targetScene = scenes[targetIndex];
 
   isSceneSnapping = true;
@@ -305,7 +310,7 @@ window.addEventListener(
 
     wheelGestureTimer = window.setTimeout(() => {
       wheelGestureLocked = false;
-    }, 720);
+    }, WHEEL_GESTURE_RELEASE_MS);
   },
   { passive: false, capture: true },
 );
@@ -344,7 +349,7 @@ window.addEventListener(
   () => {
     window.setTimeout(() => {
       touchGestureLocked = false;
-    }, 720);
+    }, SCENE_INPUT_COOLDOWN_MS);
   },
   { passive: true },
 );
@@ -469,7 +474,7 @@ scenes.forEach((sceneElement, index) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    snapToScene(navLinks.indexOf(link), 0.22);
+    snapToScene(navLinks.indexOf(link));
   });
 });
 
