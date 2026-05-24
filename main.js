@@ -227,6 +227,8 @@ let snapTimer = 0;
 let isSceneSnapping = false;
 let wheelGestureLocked = false;
 let wheelGestureTimer = 0;
+let inputCooldownUntil = 0;
+let touchGestureLocked = false;
 let touchStartY = 0;
 
 const getNearestSceneIndex = () => {
@@ -251,10 +253,17 @@ const releaseSceneSnap = (delay = 280) => {
   }, delay);
 };
 
+const lockInputAfterSnap = () => {
+  inputCooldownUntil = performance.now() + 700;
+};
+
 const snapToScene = (targetIndex, duration = 0.22) => {
   const targetScene = scenes[targetIndex];
 
   isSceneSnapping = true;
+  wheelGestureLocked = true;
+  touchGestureLocked = true;
+  lockInputAfterSnap();
   activateScene(targetScene);
   lenis.scrollTo(targetScene, {
     duration,
@@ -265,7 +274,7 @@ const snapToScene = (targetIndex, duration = 0.22) => {
 };
 
 const snapByDirection = (direction) => {
-  if (reducedMotion || isSceneSnapping || direction === 0) return;
+  if (reducedMotion || isSceneSnapping || direction === 0 || performance.now() < inputCooldownUntil) return;
 
   const currentIndex = getNearestSceneIndex();
   const targetIndex = Math.max(0, Math.min(scenes.length - 1, currentIndex + direction));
@@ -289,14 +298,14 @@ window.addEventListener(
     event.preventDefault();
     window.clearTimeout(wheelGestureTimer);
 
-    if (!wheelGestureLocked) {
+    if (!wheelGestureLocked && performance.now() >= inputCooldownUntil) {
       wheelGestureLocked = true;
       snapByDirection(Math.sign(event.deltaY));
     }
 
     wheelGestureTimer = window.setTimeout(() => {
       wheelGestureLocked = false;
-    }, 220);
+    }, 720);
   },
   { passive: false, capture: true },
 );
@@ -305,19 +314,37 @@ window.addEventListener(
   "touchstart",
   (event) => {
     touchStartY = event.touches[0]?.clientY ?? 0;
+    touchGestureLocked = false;
   },
   { passive: true },
 );
 
 window.addEventListener(
-  "touchend",
+  "touchmove",
   (event) => {
-    const touchEndY = event.changedTouches[0]?.clientY ?? touchStartY;
-    const deltaY = touchStartY - touchEndY;
+    const currentY = event.touches[0]?.clientY ?? touchStartY;
+    const deltaY = touchStartY - currentY;
+
+    if (touchGestureLocked || isSceneSnapping || performance.now() < inputCooldownUntil) {
+      event.preventDefault();
+      return;
+    }
 
     if (Math.abs(deltaY) > 28) {
+      event.preventDefault();
+      touchGestureLocked = true;
       snapByDirection(Math.sign(deltaY));
     }
+  },
+  { passive: false },
+);
+
+window.addEventListener(
+  "touchend",
+  () => {
+    window.setTimeout(() => {
+      touchGestureLocked = false;
+    }, 720);
   },
   { passive: true },
 );
