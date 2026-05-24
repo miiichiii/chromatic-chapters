@@ -225,6 +225,9 @@ const lenis = new Lenis({
 
 let snapTimer = 0;
 let isSceneSnapping = false;
+let wheelGestureLocked = false;
+let wheelGestureTimer = 0;
+let touchStartY = 0;
 
 const getNearestSceneIndex = () => {
   let nearestIndex = 0;
@@ -241,37 +244,34 @@ const getNearestSceneIndex = () => {
   return nearestIndex;
 };
 
-const releaseSceneSnap = () => {
+const releaseSceneSnap = (delay = 280) => {
   window.clearTimeout(snapTimer);
   snapTimer = window.setTimeout(() => {
     isSceneSnapping = false;
-  }, 560);
+  }, delay);
 };
 
-const snapToNearestScene = () => {
-  if (reducedMotion || isSceneSnapping) return;
-
-  const targetIndex = getNearestSceneIndex();
+const snapToScene = (targetIndex, duration = 0.22) => {
   const targetScene = scenes[targetIndex];
-  const distance = Math.abs(targetScene.getBoundingClientRect().top);
-
-  if (distance < 3) return;
 
   isSceneSnapping = true;
   activateScene(targetScene);
   lenis.scrollTo(targetScene, {
-    duration: 0.38,
+    duration,
     offset: 0,
     lock: true,
   });
   releaseSceneSnap();
 };
 
-const queueSceneSnap = (velocity = 0) => {
-  if (reducedMotion || isSceneSnapping) return;
+const snapByDirection = (direction) => {
+  if (reducedMotion || isSceneSnapping || direction === 0) return;
 
-  window.clearTimeout(snapTimer);
-  snapTimer = window.setTimeout(snapToNearestScene, Math.abs(velocity) > 10 ? 460 : 320);
+  const currentIndex = getNearestSceneIndex();
+  const targetIndex = Math.max(0, Math.min(scenes.length - 1, currentIndex + direction));
+
+  if (targetIndex === currentIndex) return;
+  snapToScene(targetIndex);
 };
 
 lenis.on("scroll", ({ progress, velocity }) => {
@@ -279,8 +279,48 @@ lenis.on("scroll", ({ progress, velocity }) => {
   uniforms.uScroll.value = progress;
   uniforms.uVelocity.value = Math.min(Math.abs(velocity) / 34, 1.8);
   gsap.to(scrollMeter, { scaleX: progress, duration: 0.18, overwrite: true });
-  queueSceneSnap(velocity);
 });
+
+window.addEventListener(
+  "wheel",
+  (event) => {
+    if (reducedMotion || Math.abs(event.deltaY) < 3) return;
+
+    event.preventDefault();
+    window.clearTimeout(wheelGestureTimer);
+
+    if (!wheelGestureLocked) {
+      wheelGestureLocked = true;
+      snapByDirection(Math.sign(event.deltaY));
+    }
+
+    wheelGestureTimer = window.setTimeout(() => {
+      wheelGestureLocked = false;
+    }, 220);
+  },
+  { passive: false, capture: true },
+);
+
+window.addEventListener(
+  "touchstart",
+  (event) => {
+    touchStartY = event.touches[0]?.clientY ?? 0;
+  },
+  { passive: true },
+);
+
+window.addEventListener(
+  "touchend",
+  (event) => {
+    const touchEndY = event.changedTouches[0]?.clientY ?? touchStartY;
+    const deltaY = touchStartY - touchEndY;
+
+    if (Math.abs(deltaY) > 28) {
+      snapByDirection(Math.sign(deltaY));
+    }
+  },
+  { passive: true },
+);
 
 gsap.ticker.add((time) => {
   lenis.raf(time * 1000);
@@ -402,10 +442,7 @@ scenes.forEach((sceneElement, index) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    isSceneSnapping = true;
-    activateScene(scenes[navLinks.indexOf(link)]);
-    lenis.scrollTo(link.hash, { duration: 0.38, offset: 0, lock: true });
-    releaseSceneSnap();
+    snapToScene(navLinks.indexOf(link), 0.22);
   });
 });
 
