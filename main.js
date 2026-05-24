@@ -43,9 +43,10 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   alpha: false,
   powerPreference: "high-performance",
-  preserveDrawingBuffer: true,
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const getMaxPixelRatio = () => (window.innerWidth < 760 ? 1.2 : 1.5);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, getMaxPixelRatio()));
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -111,7 +112,7 @@ const material = new THREE.ShaderMaterial({
       float amplitude = 0.52;
       mat2 rotate = mat2(0.80, -0.60, 0.60, 0.80);
 
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < 5; i++) {
         value += amplitude * noise(p);
         p = rotate * p * 2.03 + 1.9;
         amplitude *= 0.48;
@@ -182,6 +183,7 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 const resize = () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, getMaxPixelRatio()));
   renderer.setSize(width, height, false);
   uniforms.uResolution.value.set(width * renderer.getPixelRatio(), height * renderer.getPixelRatio());
 };
@@ -201,11 +203,11 @@ window.addEventListener("pointermove", (event) => {
 });
 
 const lenis = new Lenis({
-  duration: 0.96,
-  easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  duration: 0.48,
+  easing: (t) => 1 - Math.pow(1 - t, 3),
   smoothWheel: !reducedMotion,
   syncTouch: true,
-  touchMultiplier: 1.08,
+  touchMultiplier: 1,
 });
 
 lenis.on("scroll", ({ progress, velocity }) => {
@@ -269,27 +271,27 @@ scenes.forEach((sceneElement, index) => {
 
   gsap.set([heading, paragraph, eyebrow], {
     y: 86,
-    autoAlpha: 0,
-    filter: "blur(14px)",
+    opacity: 0,
+    force3D: true,
   });
   gsap.set(indexNumber, {
     y: 110,
     x: direction * 40,
-    autoAlpha: 0,
+    opacity: 0,
     rotate: direction * -4,
+    force3D: true,
   });
-  gsap.set(copy, { scale: 0.985 });
+  gsap.set(copy, { scale: 0.985, force3D: true });
 
   if (index === 0) {
     gsap.set([heading, paragraph, eyebrow], {
       y: 0,
-      autoAlpha: 1,
-      filter: "blur(0px)",
+      opacity: 1,
     });
     gsap.set(indexNumber, {
       y: 0,
       x: 0,
-      autoAlpha: 1,
+      opacity: 1,
       rotate: 0,
     });
     gsap.set(copy, { scale: 1 });
@@ -312,13 +314,13 @@ scenes.forEach((sceneElement, index) => {
   });
 
   timeline
-    .to(eyebrow, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.18, ease: "power3.out" }, 0.04)
-    .to(heading, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.30, ease: "power3.out" }, 0.1)
-    .to(paragraph, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.26, ease: "power2.out" }, 0.2)
-    .to(indexNumber, { y: 0, x: 0, autoAlpha: 1, rotate: 0, duration: 0.42, ease: "power2.out" }, 0.08)
+    .to(eyebrow, { y: 0, opacity: 1, duration: 0.16, ease: "power3.out" }, 0.04)
+    .to(heading, { y: 0, opacity: 1, duration: 0.26, ease: "power3.out" }, 0.1)
+    .to(paragraph, { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }, 0.2)
+    .to(indexNumber, { y: 0, x: 0, opacity: 1, rotate: 0, duration: 0.36, ease: "power2.out" }, 0.08)
     .to(copy, { y: -42, scale: 1.018, duration: 0.46, ease: "none" }, 0.48)
-    .to(indexNumber, { y: -90, autoAlpha: 0.22, duration: 0.42, ease: "none" }, 0.54)
-    .to([heading, paragraph, eyebrow], { y: -62, autoAlpha: 0, filter: "blur(10px)", duration: 0.26, ease: "power2.in" }, 0.76);
+    .to(indexNumber, { y: -90, opacity: 0.22, duration: 0.42, ease: "none" }, 0.54)
+    .to([heading, paragraph, eyebrow], { y: -62, opacity: 0, duration: 0.22, ease: "power2.in" }, 0.76);
 
   gsap.to(sceneElement, {
     scrollTrigger: {
@@ -335,7 +337,7 @@ scenes.forEach((sceneElement, index) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    lenis.scrollTo(link.hash, { duration: 0.9, offset: 0 });
+    lenis.scrollTo(link.hash, { duration: 0.5, offset: 0 });
   });
 });
 

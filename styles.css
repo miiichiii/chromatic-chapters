@@ -63,7 +63,9 @@ body::after {
   width: 100%;
   height: 100%;
   display: block;
-  background: var(--sky-low);
+  background:
+    linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 54%, var(--sky-low) 100%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.36), transparent 46%);
 }
 
 .site-header {
@@ -239,6 +241,15 @@ main {
 
 .scene-copy {
   width: min(790px, 100%);
+  will-change: transform;
+}
+
+.eyebrow,
+.scene-copy h1,
+.scene-copy h2,
+.scene-copy p,
+.scene-index {
+  will-change: transform, opacity;
 }
 
 .align-right .scene-copy {
