@@ -1,5 +1,11 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
-import Lenis from "https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.mjs";
+(() => {
+const { THREE, Lenis, gsap, ScrollTrigger } = window;
+
+if (!THREE || !Lenis || !gsap || !ScrollTrigger) {
+  document.documentElement.dataset.skyborne = "fallback";
+  console.warn("Interactive sky dependencies did not load. Showing CSS sky fallback.");
+  return;
+}
 
 const canvas = document.querySelector("#paint-canvas");
 const scenes = [...document.querySelectorAll(".story-scene")];
@@ -7,6 +13,7 @@ const navLinks = [...document.querySelectorAll(".chapter-nav a")];
 const scrollMeter = document.querySelector(".scroll-meter span");
 const root = document.documentElement;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+root.dataset.skyborne = "ready";
 
 const hexToRgb = (hex) => {
   const value = hex.replace("#", "");
@@ -159,6 +166,12 @@ const material = new THREE.ShaderMaterial({
       float paintWake = (1.0 - smoothstep(0.0, 0.72, cursorDistance)) * (0.24 + uVelocity * 0.42);
       vec3 paintTint = mix(uAccent, uInk, cloudBase * 0.34);
       sky = mix(sky, paintTint, paintWake * (0.46 + brush * 0.34));
+
+      float cursorAura = 1.0 - smoothstep(0.0, 0.54, cursorDistance);
+      float cursorCore = 1.0 - smoothstep(0.0, 0.20, cursorDistance);
+      vec3 cursorLight = mix(uAccent, vec3(1.0), 0.38);
+      sky = mix(sky, cursorLight, cursorAura * (0.16 + min(uVelocity, 1.0) * 0.24));
+      sky += vec3(cursorCore * 0.08);
 
       vec2 starGrid = floor(uv * uResolution.xy * 0.42);
       float starSeed = hash(starGrid);
@@ -359,3 +372,4 @@ const render = (time) => {
 
 requestAnimationFrame(render);
 ScrollTrigger.refresh();
+})();
