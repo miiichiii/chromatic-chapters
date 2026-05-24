@@ -258,9 +258,11 @@ const snapToNearestScene = () => {
   if (distance < 3) return;
 
   isSceneSnapping = true;
+  activateScene(targetScene);
   lenis.scrollTo(targetScene, {
-    duration: 0.42,
+    duration: 0.38,
     offset: 0,
+    lock: true,
   });
   releaseSceneSnap();
 };
@@ -269,7 +271,7 @@ const queueSceneSnap = (velocity = 0) => {
   if (reducedMotion || isSceneSnapping) return;
 
   window.clearTimeout(snapTimer);
-  snapTimer = window.setTimeout(snapToNearestScene, Math.abs(velocity) > 10 ? 170 : 115);
+  snapTimer = window.setTimeout(snapToNearestScene, Math.abs(velocity) > 10 ? 460 : 320);
 };
 
 lenis.on("scroll", ({ progress, velocity }) => {
@@ -401,7 +403,8 @@ navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
     isSceneSnapping = true;
-    lenis.scrollTo(link.hash, { duration: 0.42, offset: 0 });
+    activateScene(scenes[navLinks.indexOf(link)]);
+    lenis.scrollTo(link.hash, { duration: 0.38, offset: 0, lock: true });
     releaseSceneSnap();
   });
 });

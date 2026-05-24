@@ -20,7 +20,6 @@
 html {
   background: var(--sky-low);
   scroll-behavior: auto;
-  scroll-snap-type: y mandatory;
 }
 
 body {
@@ -185,8 +184,6 @@ main {
   align-content: start;
   overflow: clip;
   isolation: isolate;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
 }
 
 .story-scene::before {
